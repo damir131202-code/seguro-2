@@ -1,4 +1,5 @@
 import path from 'node:path';
+codex/create-new-e-commerce-project-from-scratch-64303r
 import { webcrypto } from 'node:crypto';
 import { defineConfig } from 'vitest/config';
 
@@ -9,6 +10,10 @@ if (!globalThis.crypto) {
   });
 }
 
+=======
+import { defineConfig } from 'vitest/config';
+
+main
 export default defineConfig({
   resolve: {
     alias: {
