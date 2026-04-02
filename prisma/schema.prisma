@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AvailabilityStatus {
+  IN_STOCK
+  OUT_OF_STOCK
+  PREORDER
+}
+
+enum OrderStatus {
+  NEW
+  PROCESSING
+  CONFIRMED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum ImportSourceType {
+  CSV
+  XLSX
+}
+
+enum MarkupScope {
+  GLOBAL
+  CATEGORY
+  BRAND
+  PRODUCT
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  products    Product[]
+  markupRule  MarkupRule?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Brand {
+  id         String      @id @default(cuid())
+  name       String
+  slug       String      @unique
+  isActive   Boolean     @default(true)
+  products   Product[]
+  markupRule MarkupRule?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Product {
+  id                 String             @id @default(cuid())
+  externalId         String?
+  sku                String             @unique
+  name               String
+  slug               String             @unique
+  brandId            String
+  categoryId         String
+  purchasePrice      Decimal            @db.Decimal(12, 2)
+  retailPrice        Decimal            @db.Decimal(12, 2)
+  markupOverridePct  Float?
+  currency           String             @default("KZT")
+  stockQty           Int                @default(0)
+  availabilityStatus AvailabilityStatus @default(OUT_OF_STOCK)
+  shortDescription   String?
+  description        String?
+  specifications     Json?
+  images             Json?
+  isActive           Boolean            @default(true)
+  isFeatured         Boolean            @default(false)
+  archivedAt         DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  lastImportedAt     DateTime?
+  brand              Brand              @relation(fields: [brandId], references: [id])
+  category           Category           @relation(fields: [categoryId], references: [id])
+  orderItems         OrderItem[]
+
+  @@index([externalId])
+  @@index([name])
+  @@index([isActive, availabilityStatus])
+}
+
+model MarkupRule {
+  id            String      @id @default(cuid())
+  scope         MarkupScope
+  percentage    Float
+  categoryId    String?     @unique
+  brandId       String?     @unique
+  productId     String?     @unique
+  isActive      Boolean     @default(true)
+  effectiveFrom DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  category      Category?   @relation(fields: [categoryId], references: [id])
+  brand         Brand?      @relation(fields: [brandId], references: [id])
+}
+
+model SiteSetting {
+  id                  String   @id @default(cuid())
+  siteName            String   @default("Seguro Comp")
+  globalMarkupPct     Float    @default(20)
+  outOfStockBehaviour String   @default("PREORDER")
+  whatsappPhone       String   @default("77000000000")
+  contactEmail        String?
+  contactPhone        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  customerName    String
+  phone           String
+  email           String?
+  comment         String?
+  contactMethod   String
+  status          OrderStatus @default(NEW)
+  totalAmount     Decimal     @db.Decimal(12, 2)
+  currency        String      @default("KZT")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id           String   @id @default(cuid())
+  orderId      String
+  productId    String
+  productName  String
+  sku          String
+  quantity     Int
+  unitPrice    Decimal  @db.Decimal(12, 2)
+  totalPrice   Decimal  @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product  @relation(fields: [productId], references: [id])
+}
+
+model ImportRun {
+  id             String           @id @default(cuid())
+  sourceType     ImportSourceType
+  fileName       String
+  createdCount   Int              @default(0)
+  updatedCount   Int              @default(0)
+  archivedCount  Int              @default(0)
+  skippedCount   Int              @default(0)
+  errorCount     Int              @default(0)
+  status         String           @default("SUCCESS")
+  details        Json?
+  startedAt      DateTime         @default(now())
+  finishedAt     DateTime?
+}
